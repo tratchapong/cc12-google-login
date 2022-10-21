@@ -19,6 +19,7 @@ const userData = [
 ]
 let res = await User.bulkCreate(userData)
 console.log(res)
+process.exit(0)
 }
 
 userSeed()

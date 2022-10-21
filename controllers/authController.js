@@ -5,6 +5,7 @@ const { Op } = require('sequelize');
 
 const AppError = require('../utils/appError');
 const { User } = require('../models');
+const { default: jwtDecode } = require('jwt-decode');
 
 const genToken = payload =>
   jwt.sign(payload, process.env.JWT_SECRET_KEY || 'private_key', {
@@ -78,6 +79,28 @@ exports.login = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.glogin = async (req,res) => {
+  const {credential} = req.body
+  let g_user = jwtDecode(credential)
+  const user = await User.findOne({
+    where: {
+      [Op.or]: [{ email: g_user.email }]
+    }
+  });
+  let newuser
+  if(!user) {
+    newuser = await User.create({
+      email : g_user.email,
+      phone: g_user.exp,
+      password: ''
+    });
+  } 
+  
+  const token = genToken({ id: user.id });
+  res.status(200).json({ token });
+
+}
 
 exports.getMe = (req, res) => {
   res.status(200).json({ user: req.user });
