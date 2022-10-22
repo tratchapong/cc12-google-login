@@ -85,7 +85,7 @@ exports.glogin = async (req,res) => {
   let g_user = jwtDecode(credential)
   const user = await User.findOne({
     where: {
-      [Op.or]: [{ email: g_user.email }]
+       email: g_user.email 
     }
   });
   let newuser
