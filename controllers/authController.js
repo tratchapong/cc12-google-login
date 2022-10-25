@@ -86,7 +86,7 @@ exports.glogin = async (req,res) => {
   const user = await User.findOne({
     where: {
        email: g_user.email 
-    }
+    },
   });
   let newuser
   if(!user) {
@@ -97,7 +97,7 @@ exports.glogin = async (req,res) => {
     });
   } 
   
-  const token = genToken({ id: user.id });
+  const token = user ? genToken({ id: user.id }) : genToken({ id: newuser.id});
   res.status(200).json({ token });
 
 }
