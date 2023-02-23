@@ -1,16 +1,22 @@
-const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { Op } = require('sequelize');
-
-const AppError = require('../utils/appError');
+const jwtDecode = require('jwt-decode');
+const axios = require('axios');
 const { User } = require('../models');
-const { default: jwtDecode } = require('jwt-decode');
+const AppError = require('../utils/appError');
 
 const genToken = payload =>
   jwt.sign(payload, process.env.JWT_SECRET_KEY || 'private_key', {
     expiresIn: process.env.JWT_EXPIRES || '30d'
   });
+
+const verifyToken = async (token) => {
+    console.log('Verify Token...')
+    let res = await axios.get('https://oauth2.googleapis.com/tokeninfo?id_token=' + token,{
+      validateStatus : function (status) { return status < 500} 
+    })
+    return !!(res.data.iss)
+  }
 
 exports.register = async (req, res, next) => {
   try {
@@ -59,9 +65,7 @@ exports.login = async (req, res, next) => {
     }
 
     const user = await User.findOne({
-      where: {
-        [Op.or]: [{ email: email }]
-      }
+      where: { email: email }
     });
 
     if (!user) {
@@ -80,26 +84,31 @@ exports.login = async (req, res, next) => {
   }
 };
 
-exports.glogin = async (req,res) => {
-  const {credential} = req.body
-  let g_user = jwtDecode(credential)
-  const user = await User.findOne({
-    where: {
-       email: g_user.email 
-    }
-  });
-  let newuser
-  if(!user) {
-    newuser = await User.create({
-      email : g_user.email,
-      phone: g_user.exp,
-      password: ''
+exports.glogin = async (req,res,next) => {
+  try {
+    const {credential} = req.body
+    let token_ok = await verifyToken(credential)
+    if(!token_ok)
+      throw new AppError('Invalid Google-Token...', 401)
+    let g_user = jwtDecode(credential)
+    const user = await User.findOne({
+      where: {
+         email: g_user.email 
+      }
     });
-  } 
-  
-  const token = genToken({ id: user.id });
-  res.status(200).json({ token });
-
+    let newuser
+    if(!user) {
+      newuser = await User.create({
+        email : g_user.email,
+        phone: g_user.exp,
+        password: ''
+      });
+    } 
+    const token = user ? genToken({ id: user.id }) : genToken({ id: newuser.id});
+    res.status(200).json({ token });
+  } catch (err) {
+    next(err)
+  }
 }
 
 exports.getMe = (req, res) => {

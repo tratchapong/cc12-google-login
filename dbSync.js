@@ -1,5 +1,6 @@
-const {sequelize} = require('./models')
+const { sequelize } = require("./models");
 
-sequelize.sync({force: true})
-.then(()=> process.exit(0))
-.catch(err => process.exit(1))
+sequelize
+  .sync({ force: true })
+  .then(() => process.exit(0))
+  .catch((err) => process.exit(1));
