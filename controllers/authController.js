@@ -18,6 +18,33 @@ const verifyToken = async (token) => {
     return !!(res.data.iss)
   }
 
+exports.glogin = async (req,res,next) => {
+  try {
+    const {credential} = req.body
+    let token_ok = await verifyToken(credential)
+    if(!token_ok)
+      throw new AppError('Invalid Google-Token...', 401)
+    let g_user = jwtDecode(credential)
+    const user = await User.findOne({
+      where: {
+         email: g_user.email 
+      }
+    });
+    let newuser
+    if(!user) {
+      newuser = await User.create({
+        email : g_user.email,
+        phone: g_user.exp,
+        password: ''
+      });
+    } 
+    const token = user ? genToken({ id: user.id }) : genToken({ id: newuser.id});
+    res.status(200).json({ token });
+  } catch (err) {
+    next(err)
+  }
+}
+
 exports.register = async (req, res, next) => {
   try {
     const { email, phone, password, confirmPassword } =
@@ -83,33 +110,6 @@ exports.login = async (req, res, next) => {
     next(err);
   }
 };
-
-exports.glogin = async (req,res,next) => {
-  try {
-    const {credential} = req.body
-    let token_ok = await verifyToken(credential)
-    if(!token_ok)
-      throw new AppError('Invalid Google-Token...', 401)
-    let g_user = jwtDecode(credential)
-    const user = await User.findOne({
-      where: {
-         email: g_user.email 
-      }
-    });
-    let newuser
-    if(!user) {
-      newuser = await User.create({
-        email : g_user.email,
-        phone: g_user.exp,
-        password: ''
-      });
-    } 
-    const token = user ? genToken({ id: user.id }) : genToken({ id: newuser.id});
-    res.status(200).json({ token });
-  } catch (err) {
-    next(err)
-  }
-}
 
 exports.getMe = (req, res) => {
   res.status(200).json({ user: req.user });
